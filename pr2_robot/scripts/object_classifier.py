@@ -177,24 +177,53 @@ def pcl_callback(pcl_msg):
 
 # function to load parameters and request PickPlace service
 def pr2_mover(object_list):
-    pass
-
     # TODO: Initialize variables
+    # this has to match the scene/world that we are testing
+    test_scene_num = Int32(3)
+    object_name = String()
+    arm = String()
+    pick_pose = Pose()
+    place_pose = Pose()
     
     # TODO: Get/Read parameters
-    
+    object_list_param = rospy.get_param('/object_list')
+    dropbox_param = rospy.get_param('/dropbox')
     # TODO: Parse parameters into individual variables
+    # list to keep labels of objects in detected
+    labels = []
+    # list to keep their centroids
+    centroids = []
+    for obj in object_list:
+        labels.append(obj.label)
+        points = ros_to_pcl(obj.cloud).to_array()
+        centroid = np.mean(points, axis=0)
+        centroids.append(list(centroid))
 
     # TODO: Rotate PR2 in place to capture side tables for the collision map
 
     # TODO: Loop through the pick list
+    for i, obj in enumerate(object_list):
+        object_name.data = obj['name']
+        group = obj['group']
 
         # TODO: Get the PointCloud for a given object and obtain it's centroid
+        centroid = centroids[i]
 
         # TODO: Create 'place_pose' for the object
+        pick_pose.position.x = np.asscalar(centroid[0])
+        pick_pose.position.y = np.asscalar(centroid[1])
+        pick_pose.position.z = np.asscalar(centroid[2])
 
         # TODO: Assign the arm to be used for pick_place
-
+        if group == 'green':
+            arm.data = 'right'
+        else:
+            arm.data = 'left'
+        arm.data = labels[i]
+        box = dropbox_param[0]
+        place_pose.position.x = group_pose['position'][0]
+        place_pose.position.y = group_pose['position'][1]
+        place_pose.position.z = group_pose['position'][2]
         # TODO: Create a list of dictionaries (made with make_yaml_dict()) for later output to yaml format
 
         # Wait for 'pick_place_routine' service to come up
@@ -212,6 +241,9 @@ def pr2_mover(object_list):
             print "Service call failed: %s"%e"""
 
     # TODO: Output your request parameters into output yaml file
+    resp = pick_place_routine(test_scene_num, object_name, arm, pick_pose, place_pose)
+    print ("Response: ",resp.success)
+    yaml_arr.append(make_yaml_dict(test_scene_num, arm, object_name, pick_pose, place_pose))
 
 
 
